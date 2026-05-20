@@ -1,32 +1,35 @@
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
-import anthropic
 import os
+from telegram.ext import Updater, MessageHandler, Filters
+from anthropic import Anthropic
 
-client = anthropic.Anthropic(
+client = Anthropic(
     api_key=os.getenv("ANTHROPIC_API_KEY")
 )
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Bot online.")
-
-async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def reply(update, context):
     user_text = update.message.text
 
     response = client.messages.create(
-        model="claude-3-7-sonnet-20250219",
+        model="claude-3-haiku-20240307",
         max_tokens=300,
         messages=[
             {"role": "user", "content": user_text}
         ]
     )
 
-    reply = response.content[0].text
-    await update.message.reply_text(reply)
+    answer = response.content[0].text
 
-app = ApplicationBuilder().token(os.getenv("TELEGRAM_BOT_TOKEN")).build()
+    update.message.reply_text(answer)
 
-app.add_handler(CommandHandler("start", start))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
-app.run_polling()
+updater = Updater(TOKEN, use_context=True)
+
+dispatcher = updater.dispatcher
+
+dispatcher.add_handler(
+    MessageHandler(Filters.text & ~Filters.command, reply)
+)
+
+updater.start_polling()
+updater.idle()
