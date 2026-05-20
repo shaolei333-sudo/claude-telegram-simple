@@ -1,12 +1,13 @@
 import os
-from telegram.ext import Updater, MessageHandler, Filters
+from telegram import Update
+from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
 from anthropic import Anthropic
 
 client = Anthropic(
     api_key=os.getenv("ANTHROPIC_API_KEY")
 )
 
-def reply(update, context):
+async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
 
     response = client.messages.create(
@@ -19,17 +20,16 @@ def reply(update, context):
 
     answer = response.content[0].text
 
-    update.message.reply_text(answer)
+    await update.message.reply_text(answer)
 
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+app = ApplicationBuilder().token(
+    os.getenv("TELEGRAM_BOT_TOKEN")
+).build()
 
-updater = Updater(TOKEN, use_context=True)
-
-dispatcher = updater.dispatcher
-
-dispatcher.add_handler(
-    MessageHandler(Filters.text & ~Filters.command, reply)
+app.add_handler(
+    MessageHandler(filters.TEXT & ~filters.COMMAND, reply)
 )
 
-updater.start_polling()
-updater.idle() 
+print("Bot is running...")
+
+app.run_polling() 
