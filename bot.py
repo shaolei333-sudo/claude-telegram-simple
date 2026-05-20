@@ -1,52 +1,51 @@
-mport os
-import asyncio
-import anthropic
+import os
+import logging
 from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
+from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
+from anthropic import Anthropic
 
-# 从 Railway 的 Variables 中读取配置
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-CLAUDE_KEY = os.getenv("ANTHROPIC_API_KEY")
+# 启用日志，方便我们在 Railway 看到报错
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+
+# 从环境变量读取密钥
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 # 初始化 Claude 客户端
-client = anthropic.Anthropic(api_key=CLAUDE_KEY)
+client = Anthropic(api_key=ANTHROPIC_KEY)
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('你好！雷少的机器人已成功启动！请直接发送问题，我来为你解答。')
-
-async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # 检查 Key 是否存在
-    if not CLAUDE_KEY:
-        await update.message.reply_text("错误：Railway 后台没有设置 ANTHROPIC_API_KEY 变量。")
-        return
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_text = update.message.text
+    
+    # 打印一下收到消息，证明机器人活着
+    print(f"收到雷少的消息: {user_text}")
     
     try:
-        # 使用最稳定的 3.5 Sonnet 模型，避免 404 报错
-        response = client.messages.create(
-            model="claude-3-5-sonnet-latest",
+        # 调用 Claude API
+        message = client.messages.create(
+            model="claude-3-5-sonnet-20240620",
             max_tokens=1024,
-            messages=[{"role": "user", "content": update.message.text}]
+            messages=[
+                {"role": "user", "content": user_text}
+            ]
         )
-        await update.message.reply_text(response.content[0].text)
+        
+        # 把 Claude 的回答发回给 Telegram
+        await update.message.reply_text(message.content[0].text)
+        
     except Exception as e:
-        # 如果报错，把具体原因发回 Telegram 方便排查
-        error_msg = str(e)
-        if "401" in error_msg:
-            await update.message.reply_text("出错了：401 身份验证失败。请检查 Railway 里的 API Key 是否正确，或是否有空格。")
-        elif "404" in error_msg:
-            await update.message.reply_text("出错了：404 找不到模型。请确认你的 Anthropic 账号是否有权使用该模型。")
-        else:
-            await update.message.reply_text(f"Claude 响应出错: {error_msg}")
+        print(f"出错了: {e}")
+        await update.message.reply_text("哎呀，脑子卡住了，请稍后再试。")
 
 if __name__ == '__main__':
-    # 检查 Token 是否存在
-    if not TOKEN:
-        print("错误：找不到 TELEGRAM_BOT_TOKEN 变量！")
-    else:
-        application = ApplicationBuilder().token(TOKEN).build()
-        
-        application.add_handler(CommandHandler('start', start))
-        application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), chat))
-        
-        print("机器人正在运行中...")
-        application.run_polling()
+    # 启动 Telegram 机器人
+    application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    
+    echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message)
+    application.add_handler(echo_handler)
+    
+    print("机器人已启动，雷少请出车！")
+    application.run_polling()
