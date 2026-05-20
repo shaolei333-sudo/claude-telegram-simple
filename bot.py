@@ -1,19 +1,19 @@
 import os
 import asyncio
-from telegram import Update
-from telegram.ext import Application, MessageHandler, filters, CommandHandler
 import anthropic
+from telegram import Update
+from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
 
-# 环境变量
+# 獲取環境變量
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CLAUDE_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 client = anthropic.Anthropic(api_key=CLAUDE_KEY)
 
-async def start(update: Update, context):
-    await update.message.reply_text('你好！Claude 3.7 已经就绪，请提问。')
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text('你好！Claude 3.7 機器人已在 Railway 雲端成功啟動！')
 
-async def chat(update: Update, context):
+async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         response = client.messages.create(
             model="claude-3-7-sonnet-20250219",
@@ -22,11 +22,13 @@ async def chat(update: Update, context):
         )
         await update.message.reply_text(response.content[0].text)
     except Exception as e:
-        await update.message.reply_text(f"出错啦: {str(e)}")
+        print(f"Error: {e}")
 
 if __name__ == '__main__':
-    # 使用最新的 Application 架构，解决你日志里的 AttributeError
-    application = Application.builder().token(TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
+    application = ApplicationBuilder().token(TOKEN).build()
+    
+    application.add_handler(CommandHandler('start', start))
+    application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), chat))
+    
+    print("Bot is running...")
     application.run_polling()
