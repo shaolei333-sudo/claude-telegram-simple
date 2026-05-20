@@ -1,35 +1,32 @@
 import os
+import asyncio
 from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
-from anthropic import Anthropic
+from telegram.ext import Application, MessageHandler, filters, CommandHandler
+import anthropic
 
-client = Anthropic(
-    api_key=os.getenv("ANTHROPIC_API_KEY")
-)
+# 环境变量
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+CLAUDE_KEY = os.getenv("ANTHROPIC_API_KEY")
 
-async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_text = update.message.text
+client = anthropic.Anthropic(api_key=CLAUDE_KEY)
 
-    response = client.messages.create(
-        model="claude-3-haiku-20240307",
-        max_tokens=300,
-        messages=[
-            {"role": "user", "content": user_text}
-        ]
-    )
+async def start(update: Update, context):
+    await update.message.reply_text('你好！Claude 3.7 已经就绪，请提问。')
 
-    answer = response.content[0].text
+async def chat(update: Update, context):
+    try:
+        response = client.messages.create(
+            model="claude-3-7-sonnet-20250219",
+            max_tokens=1024,
+            messages=[{"role": "user", "content": update.message.text}]
+        )
+        await update.message.reply_text(response.content[0].text)
+    except Exception as e:
+        await update.message.reply_text(f"出错啦: {str(e)}")
 
-    await update.message.reply_text(answer)
-
-app = ApplicationBuilder().token(
-    os.getenv("TELEGRAM_BOT_TOKEN")
-).build()
-
-app.add_handler(
-    MessageHandler(filters.TEXT & ~filters.COMMAND, reply)
-)
-
-print("Bot is running...")
-
-app.run_polling() 
+if __name__ == '__main__':
+    # 使用最新的 Application 架构，解决你日志里的 AttributeError
+    application = Application.builder().token(TOKEN).build()
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
+    application.run_polling()
