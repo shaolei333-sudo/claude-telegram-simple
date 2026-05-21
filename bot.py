@@ -1,99 +1,36 @@
 import os
-import logging
+import anthropic
 from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder,
-    ContextTypes,
-    MessageHandler,
-    filters
-)
-from anthropic import Anthropic
+from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
-# =========================
-# 日志配置
-# =========================
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+# 初始化客戶端（手動寫死官方地址，防止 404）
+client = anthropic.Anthropic(
+    api_key=os.environ.get("ANTHROPIC_API_KEY"),
+    base_url="https://api.anthropic.com"
 )
 
-# =========================
-# 环境变量
-# =========================
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
-print("TOKEN:", TELEGRAM_TOKEN)
-print("CLAUDE:", ANTHROPIC_API_KEY)
-# =========================
-# Claude 客户端
-# =========================
-client = Anthropic(
-    api_key=ANTHROPIC_API_KEY
-)
-
-# =========================
-# 处理消息
-# =========================
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    # 获取用户消息
-    user_text = update.message.text or ""
-    print(f"收到消息: {user_text}")
-
+async def respond(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
+        user_text = update.message.text
+        print(f"收到消息: {user_text}")
 
-        # 调用 Claude API
+        # 使用最新版的 API 參數格式
         message = client.messages.create(
-            model="claude-3-haiku-20240307",
+            model="claude-3-5-sonnet-20240620",
             max_tokens=1024,
-            messages=[
-                {
-                    "role": "user",
-                    "content": user_text
-                }
-            ]
+            messages=[{"role": "user", "content": user_text}]
         )
-
-        # Claude 回复
-        reply = message.content[0].text
-
-        # 防止 Telegram 超长报错
-        reply = reply[:4000]
-
-        # 回复 Telegram
-        await update.message.reply_text(reply)
-
+        
+        await update.message.reply_text(message.content[0].text)
+        
     except Exception as e:
-
-        print(f"Claude Error: {e}")
-
-        await update.message.reply_text(
-            f"完整错误: {str(e)}"
-        )
-
-# =========================
-# 主程序
-# =========================
-def main():
-    # 创建 Telegram Bot
-    application = (
-        ApplicationBuilder()
-        .token(TELEGRAM_TOKEN)
-        .build()
-    )
-
-    # 添加消息监听
-    application.add_handler(
-        MessageHandler(
-            filters.TEXT & ~filters.COMMAND,
-            handle_message
-        )
-    )
-
-    print("机器人已启动，雷少请出车！")
-
-    # 开始运行
-    application.run_polling()
+        # 如果出錯，打印詳細信息
+        print(f"詳細錯誤: {e}")
+        await update.message.reply_text(f"連線成功但發生錯誤: {str(e)}")
 
 if __name__ == '__main__':
-    main()
+    # 啟動機器人
+    app = ApplicationBuilder().token(os.environ.get("TELEGRAM_TOKEN")).build()
+    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), respond))
+    print("機器人已啟動，雷少請測試！")
+    app.run_polling()
