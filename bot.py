@@ -1,44 +1,93 @@
 import os
 import logging
 from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
+from telegram.ext import (
+    ApplicationBuilder,
+    ContextTypes,
+    MessageHandler,
+    filters
+)
 from anthropic import Anthropic
 
-# 启用日志，方便我们在 Railway 看到报错
+# =========================
+# 日志配置
+# =========================
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 
-# 从环境变量读取密钥
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY")
+# =========================
+# 环境变量
+# =========================
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 
-# 初始化 Claude 客户端
-client = Anthropic(api_key=ANTHROPIC_KEY)
+# =========================
+# Claude 客户端
+# =========================
+client = Anthropic(
+    api_key=ANTHROPIC_API_KEY
+)
 
+# =========================
+# 处理消息
+# =========================
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_text = update.message.text
-    
-    # 打印一下收到消息，证明机器人活着
+    # 获取用户消息
+    user_text = update.message.text or ""
     print(f"收到雷少的消息: {user_text}")
-    
-   try:
-        # 调用 Claude API
+
+    try:
+        # 调用 Claude API (使用 Haiku 绕过 Tier 权限限制)
         message = client.messages.create(
-            model="claude-3-sonnet-20240229",
+            model="claude-3-haiku-20240307",
             max_tokens=1024,
             messages=[
-                {"role": "user", "content": user_text}
+                {
+                    "role": "user",
+                    "content": user_text
+                }
             ]
         )
 
-        # 把 Claude 的回答发回给 Telegram
-        await update.message.reply_text(message.content[0].text)
+        # Claude 回复
+        reply = message.content[0].text
+
+        # 防止 Telegram 超长报错
+        reply = reply[:4000]
+
+        # 回复 Telegram
+        await update.message.reply_text(reply)
 
     except Exception as e:
-        print(f"Error: {e}")
-        await update.message.reply_text("哎呀，脑子卡住了，请稍后再试。")
+        print(f"Claude Error: {e}")
+        # 这里把错误详细打出来，方便咱们在 Railway 日志里修车
+        await update.message.reply_text(f"哎呀，脑子卡住了：{str(e)[:100]}")
+
+# =========================
+# 主程序
+# =========================
+def main():
+    # 创建 Telegram Bot
+    application = (
+        ApplicationBuilder()
+        .token(TELEGRAM_TOKEN)
+        .build()
+    )
+
+    # 添加消息监听
+    application.add_handler(
+        MessageHandler(
+            filters.TEXT & ~filters.COMMAND,
+            handle_message
+        )
+    )
+
+    print("机器人已启动，雷少请出车！")
+
+    # 开始运行
+    application.run_polling()
 
 if __name__ == '__main__':
     main()
