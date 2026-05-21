@@ -44,7 +44,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # 调用 Claude API
         message = client.messages.create(
-            model="claude-3-5-sonnet-latest",
+            model="claude-3-haiku-latest",
             max_tokens=1024,
             messages=[
                 {
