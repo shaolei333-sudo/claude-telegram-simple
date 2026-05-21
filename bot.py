@@ -35,12 +35,14 @@ client = Anthropic(
 # 处理消息
 # =========================
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     # 获取用户消息
     user_text = update.message.text or ""
-    print(f"收到雷少的消息: {user_text}")
+    print(f"收到消息: {user_text}")
 
     try:
-        # 调用 Claude API (使用 Haiku 绕过 Tier 权限限制)
+
+        # 调用 Claude API
         message = client.messages.create(
             model="claude-3-haiku-20240307",
             max_tokens=1024,
@@ -61,9 +63,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # 回复 Telegram
         await update.message.reply_text(reply)
 
-except Exception as e:
-    print(f"Claude Error: {e}")
-    await update.message.reply_text(f"完整错误：{str(e)}")
+    except Exception as e:
+
+        print(f"Claude Error: {e}")
+
+        await update.message.reply_text(
+            f"完整错误: {str(e)}"
+        )
 
 # =========================
 # 主程序
