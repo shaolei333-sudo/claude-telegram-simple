@@ -22,7 +22,8 @@ logging.basicConfig(
 # =========================
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
-
+print("TOKEN:", TELEGRAM_TOKEN)
+print("CLAUDE:", ANTHROPIC_API_KEY)
 # =========================
 # Claude 客户端
 # =========================
