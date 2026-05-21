@@ -42,7 +42,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         # 调用 Claude API (使用 Haiku 绕过 Tier 权限限制)
         message = client.messages.create(
-            model="claude-3-5-haiku-latest",
+            model="claude-3-5-sonnet-latest",
             max_tokens=1024,
             messages=[
                 {
@@ -61,10 +61,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # 回复 Telegram
         await update.message.reply_text(reply)
 
-    except Exception as e:
-        print(f"Claude Error: {e}")
-        # 这里把错误详细打出来，方便咱们在 Railway 日志里修车
-        await update.message.reply_text(f"哎呀，脑子卡住了：{str(e)[:100]}")
+except Exception as e:
+    print(f"Claude Error: {e}")
+    await update.message.reply_text(f"完整错误：{str(e)}")
 
 # =========================
 # 主程序
