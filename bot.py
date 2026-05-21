@@ -26,7 +26,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         # 调用 Claude API
         message = client.messages.create(
-            model="claude-3-5-sonnet-latest",
+            model="claude-3-7-sonnet-latest",
             max_tokens=1024,
             messages=[
                 {"role": "user", "content": user_text}
