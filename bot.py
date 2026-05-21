@@ -23,7 +23,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 打印一下收到消息，证明机器人活着
     print(f"收到雷少的消息: {user_text}")
     
-    try:
+   try:
         # 调用 Claude API
         message = client.messages.create(
             model="claude-3-sonnet-20240229",
@@ -32,20 +32,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 {"role": "user", "content": user_text}
             ]
         )
-        
+
         # 把 Claude 的回答发回给 Telegram
         await update.message.reply_text(message.content[0].text)
-        
+
     except Exception as e:
-        print(f"出错了: {e}")
+        print(f"Error: {e}")
         await update.message.reply_text("哎呀，脑子卡住了，请稍后再试。")
 
 if __name__ == '__main__':
-    # 启动 Telegram 机器人
-    application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-    
-    echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message)
-    application.add_handler(echo_handler)
-    
-    print("机器人已启动，雷少请出车！")
-    application.run_polling()
+    main()
