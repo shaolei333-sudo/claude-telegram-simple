@@ -1,5 +1,7 @@
 import os
 import anthropic
+import base64
+import aiohttp
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
@@ -34,7 +36,46 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         photo = update.message.photo[-1]  # 最高质量的图片
         file = await context.bot.get_file(photo.file_id)
         
-        await update.message.reply_text(f"收到图片了！文件ID: {photo.file_id}")
+        # 下载图片
+        file_url = file.file_path
+        async with aiohttp.ClientSession() as session:
+            async with session.get(file_url) as resp:
+                image_data = await resp.read()
+        
+        # Base64 编码
+        image_base64 = base64.standard_b64encode(image_data).decode("utf-8")
+        
+        # 获取 caption（如果有的话）
+        caption = update.message.caption or "分析这张图片"
+        
+        print(f"收到图片，Caption: {caption}")
+        
+        # 调用 Claude Vision API
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1024,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/jpeg",
+                                "data": image_base64,
+                            },
+                        },
+                        {
+                            "type": "text",
+                            "text": caption
+                        }
+                    ],
+                }
+            ],
+        )
+        
+        await update.message.reply_text(message.content[0].text)
         
     except Exception as e:
         print(f"处理图片出错: {e}")
